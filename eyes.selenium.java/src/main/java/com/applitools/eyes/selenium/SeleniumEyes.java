@@ -31,7 +31,7 @@ import com.applitools.eyes.selenium.regionVisibility.NopRegionVisibilityStrategy
 import com.applitools.eyes.selenium.regionVisibility.RegionVisibilityStrategy;
 import com.applitools.eyes.selenium.wrappers.EyesRemoteWebElement;
 import com.applitools.eyes.selenium.wrappers.EyesTargetLocator;
-import com.applitools.eyes.selenium.wrappers.EyesWebDriver;
+import com.applitools.eyes.selenium.wrappers.EyesSeleniumDriver;
 import com.applitools.eyes.triggers.MouseAction;
 import com.applitools.eyes.visualgrid.model.RenderingInfo;
 import com.applitools.utils.*;
@@ -72,7 +72,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     // Seconds
     private static final int RESPONSE_TIME_DEFAULT_DIFF_FROM_DEADLINE = 20;
 
-    private EyesWebDriver driver;
+    private EyesSeleniumDriver driver;
     private boolean doNotGetTitle;
 
     public boolean checkFrameOrElement;
@@ -297,7 +297,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     private void initDevicePixelRatio() {
         logger.verbose("Trying to extract device pixel ratio...");
         try {
-            devicePixelRatio = EyesSeleniumUtils.getDevicePixelRatio(this.jsExecutor);
+            devicePixelRatio = EyesDriverUtils.getDevicePixelRatio(this.jsExecutor);
         } catch (Exception ex) {
             logger.verbose("Failed to extract device pixel ratio! Using default.");
             devicePixelRatio = DEFAULT_DEVICE_PIXEL_RATIO;
@@ -313,16 +313,16 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
 
     private void initDriver(WebDriver driver) {
         if (driver instanceof RemoteWebDriver) {
-            this.driver = new EyesWebDriver(logger, this, (RemoteWebDriver) driver);
-        } else if (driver instanceof EyesWebDriver) {
-            this.driver = (EyesWebDriver) driver;
+            this.driver = new EyesSeleniumDriver(logger, this, (RemoteWebDriver) driver);
+        } else if (driver instanceof EyesSeleniumDriver) {
+            this.driver = (EyesSeleniumDriver) driver;
         } else {
             String errMsg = "Driver is not a RemoteWebDriver (" +
                     driver.getClass().getName() + ")";
             logger.log(errMsg);
             throw new EyesException(errMsg);
         }
-        if (EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (EyesDriverUtils.isMobileDevice(driver)) {
             regionVisibilityStrategyHandler.set(new NopRegionVisibilityStrategy(logger));
         }
     }
@@ -690,7 +690,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
             ArgumentGuard.notNull(checkSettings, "checkSettings");
             ArgumentGuard.notOfType(checkSettings, ISeleniumCheckTarget.class, "checkSettings");
 
-            boolean isMobileDevice = EyesSeleniumUtils.isMobileDevice(driver);
+            boolean isMobileDevice = EyesDriverUtils.isMobileDevice(driver);
 
             if (!isMobileDevice) {
                 logger.verbose("URL: " + driver.getCurrentUrl());
@@ -803,7 +803,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                 this.positionMemento = null;
             }
 
-            if (!EyesSeleniumUtils.isMobileDevice(driver)) {
+            if (!EyesDriverUtils.isMobileDevice(driver)) {
                 switchTo.resetScroll();
 
                 if (originalFC != null) {
@@ -963,7 +963,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
             return ppams;
         }
 
-        if (EyesSeleniumUtils.isMobileDevice(driver.getRemoteWebDriver())) {
+        if (EyesDriverUtils.isMobileDevice(driver.getRemoteWebDriver())) {
             logger.log("NATIVE context identified, skipping 'ensure element visible'");
             return ppams;
         }
@@ -1052,7 +1052,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                 Region r;
                 if (rect == null) {
                     Rectangle bounds;
-                    if (EyesSeleniumUtils.isMobileDevice(driver)) {
+                    if (EyesDriverUtils.isMobileDevice(driver)) {
                         bounds = eyesTargetElement.getRect();
                     } else {
                         bounds = eyesTargetElement.getBoundingClientRect();
@@ -1093,9 +1093,9 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
         if (scaleProviderHandler.get() instanceof NullScaleProvider) {
             ScaleProviderFactory factory;
             logger.verbose("Trying to extract device pixel ratio...");
-            if (!EyesSeleniumUtils.isMobileDevice(driver)) {
+            if (!EyesDriverUtils.isMobileDevice(driver)) {
                 try {
-                    devicePixelRatio = EyesSeleniumUtils.getDevicePixelRatio(this.jsExecutor);
+                    devicePixelRatio = EyesDriverUtils.getDevicePixelRatio(this.jsExecutor);
                 } catch (Exception e) {
                     logger.verbose(
                             "Failed to extract device pixel ratio! Using default.");
@@ -1121,7 +1121,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
 
     private ScaleProviderFactory getScaleProviderFactory() {
         WebElement element = EyesSeleniumUtils.getDefaultRootElement(logger, driver);
-        RectangleSize entireSize = EyesSeleniumUtils.getEntireElementSize(logger, jsExecutor, element);
+        RectangleSize entireSize = EyesDriverUtils.getEntireElementSize(logger, jsExecutor, element);
         return new ContextBasedScaleProviderFactory(logger, entireSize,
                 viewportSize, devicePixelRatio, false,
                 scaleProviderHandler);
@@ -1325,7 +1325,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
         final EyesRemoteWebElement eyesElement = (element instanceof EyesRemoteWebElement) ?
                 (EyesRemoteWebElement) element : new EyesRemoteWebElement(logger, driver, element);
 
-        if (EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (EyesDriverUtils.isMobileDevice(driver)) {
             return checkNativeElement(eyesElement, name, checkSettings, source);
         }
 
@@ -1689,12 +1689,12 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     @Override
     public RectangleSize getViewportSize() {
         RectangleSize vpSize;
-        if (!EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (!EyesDriverUtils.isMobileDevice(driver)) {
             if (imageProvider instanceof MobileScreenshotImageProvider) {
                 BufferedImage image = imageProvider.getImage();
                 vpSize = new RectangleSize((int) Math.round(image.getWidth() / devicePixelRatio), (int) Math.round(image.getHeight() / devicePixelRatio));
             } else {
-                vpSize = EyesSeleniumUtils.getViewportSize(driver);
+                vpSize = EyesDriverUtils.getViewportSize(driver);
             }
         } else {
             vpSize = getViewportSize(driver);
@@ -1708,7 +1708,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
      */
     static RectangleSize getViewportSize(WebDriver driver) {
         ArgumentGuard.notNull(driver, "driver");
-        return EyesSeleniumUtils.getViewportSizeOrDisplaySize(new Logger(), driver);
+        return EyesDriverUtils.getViewportSizeOrDisplaySize(new Logger(), driver);
     }
 
     /**
@@ -1719,12 +1719,12 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
      */
     @Override
     protected Configuration setViewportSize(RectangleSize size) {
-        if (!EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (!EyesDriverUtils.isMobileDevice(driver)) {
             FrameChain originalFrame = driver.getFrameChain();
             driver.switchTo().defaultContent();
 
             try {
-                EyesSeleniumUtils.setViewportSize(logger, driver, size);
+                EyesDriverUtils.setViewportSize(logger, driver, size);
                 effectiveViewport = new Region(Location.ZERO, size);
             } catch (EyesException e1) {
                 // Just in case the user catches this error
@@ -1745,7 +1745,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
      */
     static void setViewportSize(WebDriver driver, RectangleSize size) {
         ArgumentGuard.notNull(driver, "driver");
-        EyesSeleniumUtils.setViewportSize(new Logger(), driver, size);
+        EyesDriverUtils.setViewportSize(new Logger(), driver, size);
     }
 
     @Override
@@ -1753,7 +1753,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     }
 
     private void trySwitchToFrames(WebDriver driver, EyesTargetLocator switchTo, FrameChain frames) {
-        if (EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (EyesDriverUtils.isMobileDevice(driver)) {
             return;
         }
         try {
@@ -1764,7 +1764,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     }
 
     private FrameChain tryHideScrollbars() {
-        if (EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (EyesDriverUtils.isMobileDevice(driver)) {
             return new FrameChain(logger);
         }
         if (getConfiguration().getHideScrollbars() || (getConfiguration().getStitchMode() == StitchMode.CSS && stitchContent)) {
@@ -1779,7 +1779,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                             frame.hideScrollbars(driver);
                         } else {
                             logger.verbose("hiding scrollbars of element (1): " + this.scrollRootElement);
-                            EyesSeleniumUtils.setOverflow(this.driver, "hidden", scrollRootElement);
+                            EyesDriverUtils.setOverflow(this.driver, "hidden", scrollRootElement);
                         }
                     }
                     driver.switchTo().parentFrame();
@@ -1788,7 +1788,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                 }
             } else {
                 logger.verbose("hiding scrollbars of element (2): " + scrollRootElement);
-                this.originalOverflow = EyesSeleniumUtils.setOverflow(this.driver, "hidden", scrollRootElement);
+                this.originalOverflow = EyesDriverUtils.setOverflow(this.driver, "hidden", scrollRootElement);
             }
             logger.verbose("switching back to original frame");
             ((EyesTargetLocator) driver.switchTo()).frames(originalFC);
@@ -1799,7 +1799,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
     }
 
     private void tryRestoreScrollbars(FrameChain frameChain) {
-        if (EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (EyesDriverUtils.isMobileDevice(driver)) {
             return;
         }
         if (getConfiguration().getHideScrollbars() || (getConfiguration().getStitchMode() == StitchMode.CSS && stitchContent)) {
@@ -1814,7 +1814,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                 }
             } else {
                 logger.verbose("returning overflow of element to its original value: " + scrollRootElement);
-                EyesSeleniumUtils.setOverflow(driver, originalOverflow, scrollRootElement);
+                EyesDriverUtils.setOverflow(driver, originalOverflow, scrollRootElement);
             }
             ((EyesTargetLocator) driver.switchTo()).frames(originalFC);
             logger.verbose("done restoring scrollbars.");
@@ -1857,7 +1857,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
 
         EyesTargetLocator switchTo = null;
         PositionMemento originalPosition = null;
-        boolean isMobileDevice = EyesSeleniumUtils.isMobileDevice(this.driver);
+        boolean isMobileDevice = EyesDriverUtils.isMobileDevice(this.driver);
         if (!isMobileDevice) {
             switchTo = (EyesTargetLocator) driver.switchTo();
             switchTo.frames(this.originalFC);
@@ -2011,7 +2011,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
 
     @Override
     protected String getTitle() {
-        if (!doNotGetTitle && !EyesSeleniumUtils.isMobileDevice(driver)) {
+        if (!doNotGetTitle && !EyesDriverUtils.isMobileDevice(driver)) {
             try {
                 return driver.getTitle();
             } catch (Exception ex) {
@@ -2046,13 +2046,13 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
         // If hostOs isn't set, we'll try and extract and OS ourselves.
         if (appEnv.getOs() == null) {
             logger.log("No OS set, checking for mobile OS...");
-            if (EyesSeleniumUtils.isMobileDevice(underlyingDriver)) {
+            if (EyesDriverUtils.isMobileDevice(underlyingDriver)) {
                 String platformName = null;
                 logger.log("Mobile device detected! Checking device type..");
-                if (EyesSeleniumUtils.isAndroid(underlyingDriver)) {
+                if (EyesDriverUtils.isAndroid(underlyingDriver)) {
                     logger.log("Android detected.");
                     platformName = "Android";
-                } else if (EyesSeleniumUtils.isIOS(underlyingDriver)) {
+                } else if (EyesDriverUtils.isIOS(underlyingDriver)) {
                     logger.log("iOS detected.");
                     platformName = "iOS";
                 } else {
@@ -2062,7 +2062,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
                 if (platformName != null) {
                     String os = platformName;
                     String platformVersion =
-                            EyesSeleniumUtils.getPlatformVersion(underlyingDriver);
+                            EyesDriverUtils.getPlatformVersion(underlyingDriver);
                     if (platformVersion != null) {
                         String majorVersion =
                                 platformVersion.split("\\.", 2)[0];
@@ -2247,7 +2247,7 @@ public class SeleniumEyes extends EyesBase implements ISeleniumEyes, IBatchClose
 
     @Override
     public Boolean isSendDom() {
-        return !EyesSeleniumUtils.isMobileDevice(driver) && super.isSendDom();
+        return !EyesDriverUtils.isMobileDevice(driver) && super.isSendDom();
     }
 
     @Override
